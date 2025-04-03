@@ -1,24 +1,15 @@
-@InjectableInit(
-  initializerName: 'initDependencies',
-  preferRelativeImports: true,
-  asExtension: false,
-)
-Future<void> configureDependencies() => initDependencies();
+import 'package:camping_game_show/core/services/performance_monitor.dart';
+import 'package:firebase_performance/firebase_performance.dart';
+import 'package:get_it/get_it.dart';
 
-@module
-abstract class AppModule {
-  @singleton
-  ConnectivityService get connectivity => ConnectivityService();
+final getIt = GetIt.instance;
+
+Future<void> configureDependencies() async {
+  // Firebase services
+  getIt.registerSingleton<FirebasePerformance>(FirebasePerformance.instance);
   
-  @singleton
-  SyncManager get syncManager => SyncManager();
-  
-  @singleton
-  AssetManager get assetManager => AssetManager();
-  
-  @singleton
-  DistributionService get distribution => DistributionService();
-  
-  @singleton
-  ErrorHandler get errorHandler => ErrorHandler();
+  // App services
+  getIt.registerSingleton<PerformanceMonitor>(
+    PerformanceMonitor(getIt<FirebasePerformance>()),
+  );
 }

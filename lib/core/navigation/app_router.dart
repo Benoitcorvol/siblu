@@ -8,10 +8,12 @@ import 'package:camping_game_show/features/admin/screens/teams_management_screen
 import 'package:camping_game_show/features/admin/screens/session_details_screen.dart';
 import 'package:camping_game_show/features/player/screens/player_login_screen.dart';
 import 'package:camping_game_show/features/player/screens/player_game_screen.dart';
+import 'package:camping_game_show/features/game/screens/game_session_form.dart';
+import 'package:camping_game_show/features/game/screens/game_session_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: '/admin/login',
+    initialLocation: '/',
     routes: [
       // Routes administrateur
       GoRoute(

@@ -1,28 +1,46 @@
-abstract class BaseRepository<T> {
-  final Box<T> _localBox;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
+
+abstract class BaseRepository {
   final FirebaseFirestore _firestore;
-  final ConnectivityService _connectivity;
-  final SyncManager _syncManager;
+  final FirebaseStorage _storage;
 
   BaseRepository({
-    required Box<T> localBox,
-    required FirebaseFirestore firestore,
-    required ConnectivityService connectivity,
-    required SyncManager syncManager,
-  }) : 
-    _localBox = localBox,
-    _firestore = firestore,
-    _connectivity = connectivity,
-    _syncManager = syncManager;
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
 
-  Future<void> create(T item, {bool syncImmediately = true}) async {
-    await _localBox.add(item);
-    if (syncImmediately && await _connectivity.isConnected()) {
-      await _syncManager.sync();
+  @protected
+  CollectionReference<Map<String, dynamic>> collection(String path) {
+    return _firestore.collection(path);
+  }
+
+  @protected
+  DocumentReference<Map<String, dynamic>> document(String path) {
+    return _firestore.doc(path);
+  }
+
+  @protected
+  Reference storageRef(String path) {
+    return _storage.ref(path);
+  }
+
+  @protected
+  Future<T?> handleError<T>(Future<T> Function() operation) async {
+    try {
+      return await operation();
+    } catch (e) {
+      debugPrint('Error in repository operation: $e');
+      return null;
     }
   }
 
-  Stream<List<T>> watchAll() {
-    return _localBox.listenable().map((event) => event.values.toList());
+  @protected
+  Stream<T> handleStreamError<T>(Stream<T> stream) {
+    return stream.handleError((error) {
+      debugPrint('Error in repository stream: $error');
+    });
   }
 }
