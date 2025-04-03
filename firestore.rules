@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fonctions d'aide
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isSessionOwner(sessionId) {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerId == request.auth.uid;
+    }
+    
+    function isSessionParticipant(sessionId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/sessions/$(sessionId)/participants/$(request.auth.uid));
+    }
+    
+    // Collection users
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Collection sessions
+    match /sessions/{sessionId} {
+      // Règles d'accès aux sessions
+      allow read: if isAuthenticated() && (isSessionOwner(sessionId) || isSessionParticipant(sessionId) || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isSessionOwner(sessionId) || isAdmin());
+      allow delete: if isAuthenticated() && (isSessionOwner(sessionId) || isAdmin());
+      
+      // Sous-collection participants
+      match /participants/{participantId} {
+        allow read: if isAuthenticated() && (isSessionOwner(sessionId) || request.auth.uid == participantId || isAdmin());
+        allow create: if isAuthenticated() && (isSessionOwner(sessionId) || request.auth.uid == participantId);
+        allow update: if isAuthenticated() && (isSessionOwner(sessionId) || request.auth.uid == participantId);
+        allow delete: if isAuthenticated() && (isSessionOwner(sessionId) || request.auth.uid == participantId);
+      }
+      
+      // Sous-collection teams
+      match /teams/{teamId} {
+        allow read: if isAuthenticated() && (isSessionOwner(sessionId) || isSessionParticipant(sessionId) || isAdmin());
+        allow create, update, delete: if isAuthenticated() && (isSessionOwner(sessionId) || isAdmin());
+      }
+      
+      // Sous-collection rounds
+      match /rounds/{roundId} {
+        allow read: if isAuthenticated() && (isSessionOwner(sessionId) || isSessionParticipant(sessionId) || isAdmin());
+        allow create, update, delete: if isAuthenticated() && (isSessionOwner(sessionId) || isAdmin());
+      }
+    }
+  }
+}
