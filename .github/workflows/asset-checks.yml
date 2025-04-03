@@ -1,0 +1,53 @@
+name: Asset Validation
+
+on:
+  push:
+    paths:
+      - 'assets/**'
+  pull_request:
+    paths:
+      - 'assets/**'
+
+jobs:
+  validate-assets:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pngquant imagemagick
+      
+      - name: Check asset sizes
+        run: |
+          echo "Checking asset sizes..."
+          find assets/ -type f -size +10M | while read file; do
+            echo "::error file=$file::Asset exceeds 10MB limit: $file"
+            exit 1
+          done
+      
+      - name: Validate image assets
+        run: |
+          find assets/ -name "*.png" -o -name "*.jpg" | while read file; do
+            if ! identify "$file" &> /dev/null; then
+              echo "::error file=$file::Invalid image file: $file"
+              exit 1
+            fi
+          done
+      
+      - name: Generate asset report
+        run: |
+          echo "Asset Report" > asset_report.txt
+          echo "============" >> asset_report.txt
+          echo "Total size: $(du -sh assets/ | cut -f1)" >> asset_report.txt
+          echo "File count: $(find assets/ -type f | wc -l)" >> asset_report.txt
+          echo "Largest files:" >> asset_report.txt
+          find assets/ -type f -exec du -sh {} + | sort -rh | head -n 5 >> asset_report.txt
+      
+      - name: Upload asset report
+        uses: actions/upload-artifact@v2
+        with:
+          name: asset-report
+          path: asset_report.txt
